@@ -215,12 +215,19 @@ async function loadAll(){
 async function seedIfEmpty(){
   const existing = await getAll('items');
   if(existing.length) return;
-  const seed = [
-    {id:uid(), type:'ANTICASS', os:'Android', brand:'Samsung', reference:'S23', qty:25, critical:10, sold:180},
-    {id:uid(), type:'ANTICHOC', os:'Android', brand:'Samsung', reference:'S23', qty:6, critical:10, sold:140},
-    {id:uid(), type:'ANTICASS', os:'iOS', brand:'Apple', reference:'iPhone 15', qty:3, critical:10, sold:95},
-    {id:uid(), type:'ANTICHOC', os:'iOS', brand:'Apple', reference:'iPhone 15', qty:0, critical:10, sold:60},
+  const anticchocIos = [
+    ['iPhone 7G/8G',4],['iPhone 7P/8P',4],['iPhone XR',3],['iPhone XS',3],
+    ['iPhone 11',5],['iPhone 11 Pro',1],['iPhone 11 Pro Max',5],
+    ['iPhone 12/12 Pro',6],['iPhone 12 Pro Max',7],
+    ['iPhone 13/14',3],['iPhone 13 Pro',5],['iPhone 13 Pro Max',2],
+    ['iPhone 14 Pro',5],['iPhone 14 Pro Max',4],
+    ['iPhone 15',7],['iPhone 15 Plus',1],['iPhone 15 Pro Max',3],
+    ['iPhone 16',2],['iPhone 16 Plus',1],['iPhone 16 Pro',2],['iPhone 16 Pro Max',2],
+    ['iPhone 17',2],
   ];
+  const seed = anticchocIos.map(([reference,qty])=>({
+    id:uid(), type:'ANTICHOC', os:'iOS', brand:'Apple', reference, qty, critical:3, sold:0
+  }));
   for(const it of seed) await put('items', it);
 }
 
@@ -287,6 +294,7 @@ function render(){
         <div class="brand">Stock<span>ly</span></div>
         <div class="sub">Gestion d'inventaire</div>
       </div>
+      <button id="importBtn" style="background:var(--panel); border:1px solid var(--line); color:var(--amber); border-radius:9px; padding:8px 12px; font-size:12px; font-weight:600;">Importer</button>
     </header>
 
     <div class="stat-row">
@@ -304,6 +312,7 @@ function render(){
     <div id="tabContent"></div>
   `;
   document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tab=t.dataset.tab; render(); });
+  document.getElementById('importBtn').onclick = ()=>openImportSheet();
 
   const content = document.getElementById('tabContent');
   if(tab==='inv') content.innerHTML = renderInventory();
@@ -465,6 +474,68 @@ function openItemSheet(editId){
     };
     await saveItemForm(data, editId);
     closeSheet();
+  };
+}
+
+function openImportSheet(){
+  openSheet(`
+    <h3>Import en lot</h3>
+    <div class="field-row">
+      <div class="field"><label>Type</label>
+        <select id="iType" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;">
+          <option value="ANTICASS">ANTICASS</option>
+          <option value="ANTICHOC">ANTICHOC</option>
+        </select>
+      </div>
+      <div class="field"><label>OS</label>
+        <select id="iOs" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;">
+          <option value="iOS">iOS</option>
+          <option value="Android">Android</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Marque</label><input id="iBrand" value="Apple" placeholder="Ex: Apple, Samsung..."></div>
+    <div class="field"><label>Seuil critique (pour toutes les lignes)</label><input id="iCrit" type="number" value="5"></div>
+    <div class="field">
+      <label>Coller la liste — une ligne par article, format "Référence : quantité"</label>
+      <textarea id="iText" rows="10" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:13px;font-family:var(--mono);" placeholder="iPhone 15 : 7
+iPhone 15 Plus : 1
+iPhone 15 Pro Max : 3"></textarea>
+    </div>
+    <div id="importPreview" style="font-size:12px; color:var(--muted); margin-top:4px;"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="btnCancel">Annuler</button>
+      <button class="btn btn-primary" id="btnImport">Importer</button>
+    </div>
+  `);
+  document.getElementById('btnCancel').onclick = closeSheet;
+  document.getElementById('btnImport').onclick = async ()=>{
+    const type = document.getElementById('iType').value;
+    const os = document.getElementById('iOs').value;
+    const brand = document.getElementById('iBrand').value.trim() || '—';
+    const critical = parseInt(document.getElementById('iCrit').value) || 0;
+    const raw = document.getElementById('iText').value;
+    const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    let created = 0, updated = 0, skipped = 0;
+    for(const line of lines){
+      const m = line.match(/^(.+?)\s*:\s*(\d+)\s*$/);
+      if(!m){ skipped++; continue; }
+      const reference = m[1].trim();
+      const qty = parseInt(m[2]);
+      const existing = items.find(i=>i.type===type && i.os===os && i.brand.toLowerCase()===brand.toLowerCase() && i.reference.toLowerCase()===reference.toLowerCase());
+      if(existing){
+        existing.qty = qty;
+        if(!existing.critical) existing.critical = critical;
+        await put('items', existing);
+        updated++;
+      } else {
+        await put('items', {id:uid(), type, os, brand, reference, qty, critical, sold:0});
+        created++;
+      }
+    }
+    await loadAll();
+    closeSheet();
+    alert(`${created} article(s) créé(s), ${updated} mis à jour${skipped?`, ${skipped} ligne(s) ignorée(s)`:''}.`);
   };
 }
 

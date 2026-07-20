@@ -1,4 +1,4 @@
-const CACHE = 'stockly-v1';
+const CACHE = 'stockly-v2';
 const FILES = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e=>{
