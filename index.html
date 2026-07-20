@@ -7,10 +7,6 @@
 <title>Stockly — Inventaire</title>
 <link rel="manifest" href="manifest.json">
 <style>
-  @font-face {
-    font-family: 'Sys';
-    src: local('-apple-system');
-  }
   :root{
     --bg: #12181f;
     --panel: #1a222c;
@@ -23,6 +19,10 @@
     --red: #e5484d;
     --red-dim: #3a1f21;
     --green: #3ecf8e;
+    --blue: #4f9eea;
+    --blue-dim: #1c2f42;
+    --purple: #b586f0;
+    --purple-dim: #2c2340;
     --mono: 'SF Mono', 'Roboto Mono', ui-monospace, Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   }
@@ -37,7 +37,7 @@
   #app{max-width:560px; margin:0 auto; padding:16px 16px 100px;}
 
   header.top{
-    display:flex; align-items:baseline; justify-content:space-between;
+    display:flex; align-items:center; justify-content:space-between;
     padding:8px 2px 18px;
   }
   header.top .brand{
@@ -45,19 +45,39 @@
   }
   header.top .brand span{color:var(--amber);}
   header.top .sub{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px;}
+  .iconbtn{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    border-radius:9px; width:38px; height:38px; font-size:16px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
 
-  .stat-row{display:flex; gap:8px; margin-bottom:18px;}
+  .stat-row{display:flex; gap:8px; margin-bottom:12px;}
   .stat{
     flex:1; background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    padding:10px 12px;
+    padding:10px 12px; text-align:left;
   }
   .stat .n{font-family:var(--mono); font-size:22px; font-weight:700; line-height:1;}
   .stat .l{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:4px;}
   .stat.warn .n{color:var(--red);}
+  .stat.active{border-color:var(--amber);}
+
+  .crit-banner{
+    display:flex; align-items:center; gap:10px; background:var(--red-dim); border:1px solid var(--red);
+    color:var(--red); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; font-weight:600;
+  }
+  .crit-banner span.arrow{margin-left:auto; font-weight:700;}
+
+  .backup-reminder{
+    display:flex; align-items:center; gap:10px; background:var(--amber-dim); border:1px solid var(--amber);
+    color:var(--amber); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12px; font-weight:600;
+  }
+  .backup-reminder button{
+    margin-left:auto; background:var(--amber); color:#1a1206; border:none; border-radius:7px; padding:6px 10px; font-size:11px; font-weight:700;
+  }
 
   .tabs{
     display:flex; background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    padding:3px; margin-bottom:16px; position:sticky; top:8px; z-index:10;
+    padding:3px; margin-bottom:12px; position:sticky; top:8px; z-index:10;
   }
   .tab{
     flex:1; text-align:center; padding:9px 4px; border-radius:8px; font-size:13px;
@@ -70,21 +90,40 @@
     font-size:10px; font-family:var(--mono); padding:1px 5px; border-radius:8px;
   }
 
+  .toolbar{display:flex; gap:8px; margin-bottom:12px;}
   .search{
-    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
-    background:var(--panel); color:var(--text); font-size:14px; margin-bottom:12px;
+    flex:1; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel); color:var(--text); font-size:14px;
   }
   .search::placeholder{color:var(--muted);}
+  select.sortsel{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:0 8px; font-size:12px; max-width:110px;
+  }
+
+  .filter-row{display:flex; gap:8px; margin-bottom:12px;}
+  .chip{
+    flex:1; text-align:center; padding:8px 4px; border-radius:8px; font-size:12px;
+    background:var(--panel); border:1px solid var(--line); color:var(--muted); font-weight:600;
+  }
+  .chip.active{background:var(--panel2); color:var(--text); border-color:var(--amber);}
 
   .item{
     background:var(--panel); border:1px solid var(--line); border-radius:10px;
     padding:12px 14px; margin-bottom:8px;
   }
   .item-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
-  .item-name{font-weight:600; font-size:15px;}
+  .item-name{font-weight:600; font-size:15px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
   .item-cat{font-size:11px; color:var(--muted); margin-top:2px;}
   .item-qty{font-family:var(--mono); font-size:18px; font-weight:700; text-align:right;}
   .item-qty small{display:block; font-size:9px; color:var(--muted); font-weight:400; font-family:var(--sans);}
+
+  .type-badge{
+    font-size:9px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;
+    padding:2px 6px; border-radius:5px;
+  }
+  .type-badge.anticass{background:var(--blue-dim); color:var(--blue);}
+  .type-badge.antichoc{background:var(--purple-dim); color:var(--purple);}
 
   .bin{
     height:6px; background:var(--panel2); border-radius:3px; margin-top:10px; overflow:hidden;
@@ -102,7 +141,7 @@
 
   .crit-tag{
     font-size:9px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;
-    padding:2px 6px; border-radius:5px; margin-left:6px;
+    padding:2px 6px; border-radius:5px;
   }
   .crit-tag.low{background:var(--amber-dim); color:var(--amber);}
   .crit-tag.crit{background:var(--red-dim); color:var(--red);}
@@ -110,6 +149,10 @@
   .empty{
     text-align:center; padding:50px 20px; color:var(--muted); font-size:13px;
   }
+
+  .group-block{margin-bottom:14px;}
+  .group-head{font-size:12px; font-weight:700; color:var(--text); margin:0 0 6px 2px;}
+  .group-sub{font-size:10px; color:var(--muted); font-weight:400;}
 
   .fab{
     position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%;
@@ -131,7 +174,7 @@
   .sheet h3{margin:0 0 16px; font-size:16px;}
   .field{margin-bottom:12px;}
   .field label{display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;}
-  .field input{
+  .field input, .field select{
     width:100%; padding:11px 12px; border-radius:9px; border:1px solid var(--line);
     background:var(--panel2); color:var(--text); font-size:15px;
   }
@@ -144,6 +187,13 @@
   .btn-primary{background:var(--amber); color:#1a1206;}
   .btn-ghost{background:var(--panel2); color:var(--muted); border:1px solid var(--line);}
   .btn-danger{background:var(--red-dim); color:var(--red);}
+
+  .menu-item{
+    display:flex; align-items:center; gap:12px; padding:14px 4px; border-bottom:1px solid var(--line);
+    font-size:14px; font-weight:600;
+  }
+  .menu-item:last-child{border-bottom:none;}
+  .menu-item .desc{font-size:11px; color:var(--muted); font-weight:400; margin-top:2px;}
 
   .req-item{
     background:var(--panel); border:1px solid var(--line); border-radius:10px;
@@ -165,16 +215,42 @@
   .rank .pos{font-family:var(--mono); font-size:18px; color:var(--muted); width:22px;}
   .rank .n{flex:1; font-weight:600; font-size:14px;}
   .rank .s{font-family:var(--mono); font-size:14px; color:var(--amber);}
+
+  .hist-row{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; margin-bottom:6px; font-size:12px;
+  }
+  .hist-row .top{display:flex; justify-content:space-between; font-weight:600;}
+  .hist-row .meta{color:var(--muted); margin-top:2px; font-size:11px;}
+  .hist-delta{font-family:var(--mono);}
+  .hist-delta.pos{color:var(--green);}
+  .hist-delta.neg{color:var(--red);}
+
+  #toastHost{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    z-index:50; display:flex; flex-direction:column; gap:8px; width:calc(100% - 32px); max-width:520px;
+    align-items:center;
+  }
+  .toast{
+    background:#0d1116; border:1px solid var(--line); color:var(--text);
+    padding:11px 14px; border-radius:10px; font-size:13px; display:flex; align-items:center; gap:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4); animation: toastIn .18s ease-out; width:100%;
+  }
+  .toast button{
+    background:none; border:none; color:var(--amber); font-weight:700; font-size:13px; margin-left:auto; flex-shrink:0;
+  }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="sheetBg" class="sheet-bg"><div id="sheetContent" class="sheet"></div></div>
+<div id="toastHost"></div>
 
 <script>
 // ---------- IndexedDB layer ----------
 let db;
-const DB_NAME = 'stocklyDB', DB_VER = 1;
+const DB_NAME = 'stocklyDB', DB_VER = 2;
 function openDB(){
   return new Promise((res, rej)=>{
     const req = indexedDB.open(DB_NAME, DB_VER);
@@ -182,6 +258,8 @@ function openDB(){
       const d = e.target.result;
       if(!d.objectStoreNames.contains('items')) d.createObjectStore('items',{keyPath:'id'});
       if(!d.objectStoreNames.contains('requests')) d.createObjectStore('requests',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('history')) d.createObjectStore('history',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta',{keyPath:'key'});
     };
     req.onsuccess = e=>res(e.target.result);
     req.onerror = e=>rej(e);
@@ -196,19 +274,56 @@ function getAll(store){
 }
 function put(store, val){ return new Promise(res=>{ const r=tx(store,'readwrite').put(val); r.onsuccess=()=>res(); }); }
 function del(store, id){ return new Promise(res=>{ const r=tx(store,'readwrite').delete(id); r.onsuccess=()=>res(); }); }
+function getOne(store, key){
+  return new Promise(res=>{
+    const r = tx(store,'readonly').get(key);
+    r.onsuccess = ()=>res(r.result || null);
+    r.onerror = ()=>res(null);
+  });
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 // ---------- State ----------
 let items = [];
 let requests = [];
+let history = [];
 let tab = 'inv';
 let search = '';
 let osFilter = 'all';
+let sortMode = 'smart';
+let groupByRef = false;
+let criticalOnly = false;
+let reqSearch = '';
+let lastUndo = null;
+const BACKUP_REMINDER_THRESHOLD = 20;
+let changesSinceBackup = 0;
 
 async function loadAll(){
   items = await getAll('items');
   requests = await getAll('requests');
+  const meta = await getOne('meta', 'changesSinceBackup');
+  changesSinceBackup = meta ? meta.value : 0;
   render();
+}
+async function loadHistory(){ history = await getAll('history'); }
+
+async function bumpChangeCounter(){
+  changesSinceBackup++;
+  await put('meta', {key:'changesSinceBackup', value: changesSinceBackup});
+}
+async function resetChangeCounter(){
+  changesSinceBackup = 0;
+  await put('meta', {key:'changesSinceBackup', value: 0});
+  await put('meta', {key:'lastBackupAt', value: new Date().toISOString()});
+}
+
+function displayName(it){ return `${it.type} ${it.brand} ${it.reference}`; }
+
+async function logHistory(action, it, delta, qtyBefore, qtyAfter){
+  await put('history', {
+    id: uid(), ts: new Date().toISOString(), action,
+    itemId: it.id, itemName: displayName(it), delta, qtyBefore, qtyAfter
+  });
 }
 
 // ---------- Seed on first run ----------
@@ -231,23 +346,69 @@ async function seedIfEmpty(){
   for(const it of seed) await put('items', it);
 }
 
+// ---------- Toasts ----------
+function showToast(message, opts){
+  opts = opts || {};
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span>${escapeHtml(message)}</span>`;
+  if(opts.actionLabel){
+    const btn = document.createElement('button');
+    btn.textContent = opts.actionLabel;
+    btn.onclick = async ()=>{ el.remove(); if(opts.onAction) await opts.onAction(); };
+    el.appendChild(btn);
+  }
+  host.appendChild(el);
+  setTimeout(()=>{ if(el.parentNode) el.remove(); }, opts.duration || 4500);
+}
+
 // ---------- Actions ----------
 async function adjustQty(id, delta){
   const it = items.find(i=>i.id===id); if(!it) return;
+  const before = it.qty;
   it.qty = Math.max(0, it.qty + delta);
   await put('items', it);
+  await logHistory(delta>0?'inc':'dec', it, it.qty-before, before, it.qty);
   if(it.qty <= 2) await ensureRequest(it);
+  await bumpChangeCounter();
+  lastUndo = { kind:'qty', itemId: id, prevQty: before, prevSold: it.sold };
   await loadAll();
+  showToast(`${displayName(it)} : ${fmt(it.qty)} en stock`, { actionLabel:'Annuler', onAction: undoLast });
+  maybeShowBackupReminder();
 }
-async function sellOne(id){
+async function sellQty(id, qty){
   const it = items.find(i=>i.id===id); if(!it) return;
-  if(it.qty>0) it.qty -= 1;
-  it.sold = (it.sold||0) + 1;
+  const beforeQty = it.qty, beforeSold = it.sold||0;
+  const actualSold = Math.min(qty, it.qty);
+  it.qty = Math.max(0, it.qty - qty);
+  it.sold = beforeSold + actualSold;
   await put('items', it);
+  await logHistory('sell', it, -(beforeQty-it.qty), beforeQty, it.qty);
   if(it.qty <= 2) await ensureRequest(it);
+  await bumpChangeCounter();
+  lastUndo = { kind:'qty', itemId: id, prevQty: beforeQty, prevSold: beforeSold };
   await loadAll();
+  showToast(`Vendu ×${qty} — ${displayName(it)}`, { actionLabel:'Annuler', onAction: undoLast });
+  maybeShowBackupReminder();
 }
-function displayName(it){ return `${it.type} ${it.brand} ${it.reference}`; }
+async function undoLast(){
+  if(!lastUndo) return;
+  if(lastUndo.kind === 'qty'){
+    const it = items.find(i=>i.id===lastUndo.itemId);
+    if(it){
+      it.qty = lastUndo.prevQty;
+      it.sold = lastUndo.prevSold;
+      await put('items', it);
+    }
+  } else if(lastUndo.kind === 'delete'){
+    await put('items', lastUndo.item);
+    for(const r of lastUndo.relatedRequests) await put('requests', r);
+  }
+  lastUndo = null;
+  await loadAll();
+  showToast('Action annulée.');
+}
 async function ensureRequest(it){
   if(requests.find(r=>r.itemId===it.id && !r.done)) return;
   const need = Math.max(it.critical*2 - it.qty, it.critical || 10);
@@ -257,13 +418,24 @@ async function toggleRequest(id){
   const r = requests.find(x=>x.id===id); if(!r) return;
   r.done = !r.done;
   await put('requests', r);
+  await bumpChangeCounter();
   await loadAll();
 }
-async function deleteRequest(id){ await del('requests', id); await loadAll(); }
-async function deleteItem(id){
-  await del('items', id);
-  for(const r of requests.filter(r=>r.itemId===id)) await del('requests', r.id);
+async function clearDoneRequests(){
+  const done = requests.filter(r=>r.done);
+  for(const r of done) await del('requests', r.id);
   await loadAll();
+  showToast(`${done.length} demande(s) terminée(s) supprimée(s).`);
+}
+async function deleteItem(id){
+  const it = items.find(i=>i.id===id); if(!it) return;
+  const relatedRequests = requests.filter(r=>r.itemId===id);
+  await del('items', id);
+  for(const r of relatedRequests) await del('requests', r.id);
+  await bumpChangeCounter();
+  lastUndo = { kind:'delete', item: it, relatedRequests };
+  await loadAll();
+  showToast(`${displayName(it)} supprimé.`, { actionLabel:'Annuler', onAction: undoLast });
 }
 async function saveItemForm(data, editId){
   if(editId){
@@ -273,20 +445,57 @@ async function saveItemForm(data, editId){
   } else {
     await put('items', {id:uid(), sold:0, ...data});
   }
+  await bumpChangeCounter();
   await loadAll();
+  maybeShowBackupReminder();
 }
 async function addManualRequest(name, qty){
   await put('requests', {id:uid(), itemId:null, name, qty, done:false, auto:false});
+  await bumpChangeCounter();
   await loadAll();
+}
+async function bulkImport(type, os, brand, critical, lines){
+  let created = 0, updated = 0, skipped = 0;
+  for(const line of lines){
+    const m = line.match(/^(.+?)\s*:\s*(\d+)\s*$/);
+    if(!m){ skipped++; continue; }
+    const reference = m[1].trim();
+    const qty = parseInt(m[2]);
+    const existing = items.find(i=>i.type===type && i.os===os && i.brand.toLowerCase()===brand.toLowerCase() && i.reference.toLowerCase()===reference.toLowerCase());
+    if(existing){
+      existing.qty = qty;
+      if(!existing.critical) existing.critical = critical;
+      await put('items', existing);
+      if(existing.qty <= 2) await ensureRequest(existing);
+      updated++;
+    } else {
+      const newIt = {id:uid(), type, os, brand, reference, qty, critical, sold:0};
+      await put('items', newIt);
+      if(newIt.qty <= 2) await ensureRequest(newIt);
+      created++;
+    }
+  }
+  await bumpChangeCounter();
+  await loadAll();
+  maybeShowBackupReminder();
+  return {created, updated, skipped};
+}
+
+function maybeShowBackupReminder(){
+  // handled via banner in render(); nothing to do here besides state already updated
 }
 
 // ---------- Render ----------
 function fmt(n){ return n.toLocaleString('fr-FR'); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function typeBadgeClass(t){ return t==='ANTICASS' ? 'anticass' : 'antichoc'; }
 
 function render(){
   const app = document.getElementById('app');
-  const critCount = items.filter(i=>i.qty <= i.critical).length;
+  const critItems = items.filter(i=>i.qty <= i.critical);
+  const critCount = critItems.length;
   const openReq = requests.filter(r=>!r.done).length;
+  const showBackupReminder = changesSinceBackup >= BACKUP_REMINDER_THRESHOLD;
 
   app.innerHTML = `
     <header class="top">
@@ -294,34 +503,42 @@ function render(){
         <div class="brand">Stock<span>ly</span></div>
         <div class="sub">Gestion d'inventaire</div>
       </div>
-      <div style="display:flex; align-items:center;">
-        <button id="importBtn" style="background:var(--panel); border:1px solid var(--line); color:var(--amber); border-radius:9px; padding:8px 12px; font-size:12px; font-weight:600;">Importer</button>
-        <button id="backupBtn" style="background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:9px; padding:8px 12px; font-size:12px; font-weight:600; margin-left:6px;">⇅</button>
-      </div>
+      <button class="iconbtn" id="menuBtn">⋮</button>
     </header>
 
     <div class="stat-row">
-      <div class="stat"><div class="n">${items.length}</div><div class="l">Articles</div></div>
-      <div class="stat ${critCount?'warn':''}"><div class="n">${critCount}</div><div class="l">Stock bas</div></div>
-      <div class="stat"><div class="n">${openReq}</div><div class="l">À commander</div></div>
+      <button class="stat ${tab==='inv'&&!criticalOnly?'active':''}" id="statAll"><div class="n">${items.length}</div><div class="l">Articles</div></button>
+      <button class="stat ${critCount?'warn':''} ${criticalOnly?'active':''}" id="statCrit"><div class="n">${critCount}</div><div class="l">Stock bas</div></button>
+      <button class="stat ${tab==='req'?'active':''}" id="statReq"><div class="n">${openReq}</div><div class="l">À commander</div></button>
     </div>
+
+    ${critCount ? `<div class="crit-banner" id="critBanner">⚠ ${critCount} article(s) en stock critique <span class="arrow">→</span></div>` : ''}
+    ${showBackupReminder ? `<div class="backup-reminder">💾 ${changesSinceBackup} modifications depuis ta dernière sauvegarde<button id="quickBackupBtn">Sauvegarder</button></div>` : ''}
 
     <div class="tabs">
       <div class="tab ${tab==='inv'?'active':''}" data-tab="inv">Inventaire</div>
       <div class="tab ${tab==='req'?'active':''}" data-tab="req">Achats${openReq?`<span class="badge">${openReq}</span>`:''}</div>
       <div class="tab ${tab==='stats'?'active':''}" data-tab="stats">Top ventes</div>
+      <div class="tab ${tab==='hist'?'active':''}" data-tab="hist">Historique</div>
     </div>
 
     <div id="tabContent"></div>
   `;
-  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tab=t.dataset.tab; render(); });
-  document.getElementById('importBtn').onclick = ()=>openImportSheet();
-  document.getElementById('backupBtn').onclick = ()=>openBackupSheet();
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tab=t.dataset.tab; if(tab==='hist') loadHistory().then(render); else render(); });
+  document.getElementById('menuBtn').onclick = ()=>openMenuSheet();
+  document.getElementById('statAll').onclick = ()=>{ tab='inv'; criticalOnly=false; render(); };
+  document.getElementById('statCrit').onclick = ()=>{ tab='inv'; criticalOnly=true; render(); };
+  document.getElementById('statReq').onclick = ()=>{ tab='req'; render(); };
+  const cb = document.getElementById('critBanner');
+  if(cb) cb.onclick = ()=>{ tab='inv'; criticalOnly=true; render(); };
+  const qb = document.getElementById('quickBackupBtn');
+  if(qb) qb.onclick = ()=>openBackupSheet();
 
   const content = document.getElementById('tabContent');
   if(tab==='inv') content.innerHTML = renderInventory();
   else if(tab==='req') content.innerHTML = renderRequests();
-  else content.innerHTML = renderStats();
+  else if(tab==='stats') content.innerHTML = renderStats();
+  else content.innerHTML = renderHistory();
 
   wireTabEvents();
 
@@ -334,63 +551,117 @@ function render(){
   }
 }
 
+function sortItems(list){
+  const s = [...list];
+  if(sortMode === 'alpha') return s.sort((a,b)=>displayName(a).localeCompare(displayName(b)));
+  if(sortMode === 'qty_asc') return s.sort((a,b)=>a.qty-b.qty);
+  if(sortMode === 'qty_desc') return s.sort((a,b)=>b.qty-a.qty);
+  // smart: critical first, then alpha
+  return s.sort((a,b)=>{
+    const ac = a.qty<=a.critical, bc = b.qty<=b.critical;
+    if(ac && !bc) return -1;
+    if(!ac && bc) return 1;
+    return displayName(a).localeCompare(displayName(b));
+  });
+}
+
+function itemCard(it){
+  const pct = Math.min(100, Math.round((it.qty / Math.max(it.critical*2,1)) * 100));
+  const isCrit = it.qty <= it.critical;
+  const isLow = !isCrit && it.qty <= it.critical*1.5;
+  const fillClass = isCrit ? 'crit' : isLow ? 'low' : '';
+  const tagClass = isCrit ? 'crit' : isLow ? 'low' : '';
+  const tagText = isCrit ? 'Critique' : isLow ? 'Bas' : '';
+  return `
+  <div class="item">
+    <div class="item-top">
+      <div>
+        <div class="item-name">
+          <span class="type-badge ${typeBadgeClass(it.type)}">${it.type}</span>
+          ${tagText?`<span class="crit-tag ${tagClass}">${tagText}</span>`:''}
+        </div>
+        <div class="item-cat">${escapeHtml(it.os)} · ${escapeHtml(it.brand)} · ${escapeHtml(it.reference)}</div>
+      </div>
+      <div class="item-qty">${fmt(it.qty)}<small>en stock</small></div>
+    </div>
+    <div class="bin"><div class="bin-fill ${fillClass}" style="width:${pct}%"></div></div>
+    <div class="item-actions">
+      <button class="qbtn" data-act="dec" data-id="${it.id}">−</button>
+      <button class="qbtn" data-act="inc" data-id="${it.id}">+</button>
+      <button class="qbtn sell" data-act="sell" data-id="${it.id}">Vendre</button>
+      <button class="qbtn" data-act="edit" data-id="${it.id}">✎</button>
+    </div>
+  </div>`;
+}
+
 function renderInventory(){
   let list = items.filter(i=>{
     const hay = `${i.type} ${i.brand} ${i.reference} ${i.os}`.toLowerCase();
     const matchSearch = hay.includes(search.toLowerCase());
     const matchOs = osFilter==='all' || i.os===osFilter;
-    return matchSearch && matchOs;
+    const matchCrit = !criticalOnly || i.qty <= i.critical;
+    return matchSearch && matchOs && matchCrit;
   });
-  list = list.sort((a,b)=> (a.qty<=a.critical && b.qty>b.critical) ? -1 : (a.qty>a.critical && b.qty<=b.critical) ? 1 : displayName(a).localeCompare(displayName(b)));
+  list = sortItems(list);
 
-  const rows = list.map(it=>{
-    const pct = Math.min(100, Math.round((it.qty / Math.max(it.critical*2,1)) * 100));
-    const isCrit = it.qty <= it.critical;
-    const isLow = !isCrit && it.qty <= it.critical*1.5;
-    const fillClass = isCrit ? 'crit' : isLow ? 'low' : '';
-    const tagClass = isCrit ? 'crit' : isLow ? 'low' : '';
-    const tagText = isCrit ? 'Critique' : isLow ? 'Bas' : '';
-    return `
-    <div class="item">
-      <div class="item-top">
-        <div>
-          <div class="item-name">${escapeHtml(it.type)}${tagText?`<span class="crit-tag ${tagClass}">${tagText}</span>`:''}</div>
-          <div class="item-cat">${escapeHtml(it.os)} · ${escapeHtml(it.brand)} · ${escapeHtml(it.reference)}</div>
-        </div>
-        <div class="item-qty">${fmt(it.qty)}<small>en stock</small></div>
-      </div>
-      <div class="bin"><div class="bin-fill ${fillClass}" style="width:${pct}%"></div></div>
-      <div class="item-actions">
-        <button class="qbtn" data-act="dec" data-id="${it.id}">−</button>
-        <button class="qbtn" data-act="inc" data-id="${it.id}">+</button>
-        <button class="qbtn sell" data-act="sell" data-id="${it.id}">Vendre 1</button>
-        <button class="qbtn" data-act="edit" data-id="${it.id}">✎</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  const noResultsBlock = (!list.length && search.trim())
-    ? `<div class="empty">
-         Aucun article ne correspond à "${escapeHtml(search)}".<br><br>
-         <button class="btn btn-primary" id="btnQuickAddReq" style="padding:10px 18px;">Ajouter "${escapeHtml(search)}" à la liste d'achats</button>
-       </div>`
-    : (!list.length ? `<div class="empty">Aucun article. Touchez + pour en ajouter un.</div>` : rows);
-
-  return `
-    <input class="search" id="searchBox" placeholder="Rechercher (marque, référence...)" value="${escapeHtml(search)}">
-    <div class="tabs" style="margin-bottom:12px;">
-      <div class="tab ${osFilter==='all'?'active':''}" data-osf="all">Tous</div>
-      <div class="tab ${osFilter==='Android'?'active':''}" data-osf="Android">Android</div>
-      <div class="tab ${osFilter==='iOS'?'active':''}" data-osf="iOS">iOS</div>
+  const toolbar = `
+    <div class="toolbar">
+      <input class="search" id="searchBox" placeholder="Rechercher (marque, référence...)" value="${escapeHtml(search)}">
+      <select class="sortsel" id="sortSel">
+        <option value="smart" ${sortMode==='smart'?'selected':''}>Auto</option>
+        <option value="alpha" ${sortMode==='alpha'?'selected':''}>A → Z</option>
+        <option value="qty_asc" ${sortMode==='qty_asc'?'selected':''}>Qté ↑</option>
+        <option value="qty_desc" ${sortMode==='qty_desc'?'selected':''}>Qté ↓</option>
+      </select>
     </div>
-    ${noResultsBlock}
+    <div class="filter-row">
+      <div class="chip ${osFilter==='all'?'active':''}" data-osf="all">Tous</div>
+      <div class="chip ${osFilter==='Android'?'active':''}" data-osf="Android">Android</div>
+      <div class="chip ${osFilter==='iOS'?'active':''}" data-osf="iOS">iOS</div>
+      <div class="chip ${groupByRef?'active':''}" id="groupToggle">Groupé</div>
+      ${criticalOnly ? `<div class="chip active" id="critOnlyOff">Critique ✕</div>` : ''}
+    </div>
   `;
+
+  if(!list.length){
+    const noResultsBlock = search.trim()
+      ? `<div class="empty">
+           Aucun article ne correspond à "${escapeHtml(search)}".<br><br>
+           <button class="btn btn-primary" id="btnQuickAddReq" style="padding:10px 18px;">Ajouter "${escapeHtml(search)}" à la liste d'achats</button>
+         </div>`
+      : `<div class="empty">Aucun article ici. Touchez + pour en ajouter un.</div>`;
+    return toolbar + noResultsBlock;
+  }
+
+  if(!groupByRef){
+    return toolbar + list.map(itemCard).join('');
+  }
+
+  // Grouped by os|brand|reference, showing both types side by side
+  const groups = {};
+  const order = [];
+  for(const it of list){
+    const key = `${it.os}|${it.brand}|${it.reference}`;
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(it);
+  }
+  const blocks = order.map(key=>{
+    const [os,brand,reference] = key.split('|');
+    const its = groups[key];
+    return `
+      <div class="group-block">
+        <div class="group-head">${escapeHtml(brand)} ${escapeHtml(reference)} <span class="group-sub">(${escapeHtml(os)})</span></div>
+        ${its.map(itemCard).join('')}
+      </div>
+    `;
+  }).join('');
+  return toolbar + blocks;
 }
 
 function renderRequests(){
-  if(!requests.length) return `<div class="empty">Aucune demande de réapprovisionnement.<br>Les articles à 0 sont ajoutés automatiquement.</div>`;
-  const open = requests.filter(r=>!r.done);
-  const done = requests.filter(r=>r.done);
+  let list = requests.filter(r=>r.name.toLowerCase().includes(reqSearch.toLowerCase()));
+  const open = list.filter(r=>!r.done);
+  const done = list.filter(r=>r.done);
   const row = r => `
     <div class="req-item">
       <div class="req-check ${r.done?'done':''}" data-act="toggle-req" data-id="${r.id}"></div>
@@ -400,9 +671,18 @@ function renderRequests(){
       </div>
       <div class="req-qty">×${fmt(r.qty)}</div>
     </div>`;
-  return `
+
+  const toolbar = requests.length > 5 ? `
+    <div class="toolbar">
+      <input class="search" id="reqSearchBox" placeholder="Rechercher dans les achats..." value="${escapeHtml(reqSearch)}">
+    </div>` : '';
+
+  if(!requests.length) return toolbar + `<div class="empty">Aucune demande de réapprovisionnement.<br>Les articles à 2 ou moins sont ajoutés automatiquement.</div>`;
+  if(!list.length) return toolbar + `<div class="empty">Aucun résultat pour "${escapeHtml(reqSearch)}".</div>`;
+
+  return toolbar + `
     ${open.length ? `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;">À acheter (${open.length})</div>${open.map(row).join('')}` : `<div class="empty">Rien à acheter pour le moment.</div>`}
-    ${done.length ? `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;">Achetés</div>${done.map(row).join('')}` : ''}
+    ${done.length ? `<div style="display:flex; align-items:center; margin:16px 0 8px;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Achetés (${done.length})</div><button id="clearDoneBtn" style="margin-left:auto; background:none; border:none; color:var(--red); font-size:11px; font-weight:700;">Vider</button></div>${done.map(row).join('')}` : ''}
   `;
 }
 
@@ -412,21 +692,52 @@ function renderStats(){
   return ranked.map((it,i)=>`
     <div class="rank">
       <div class="pos">${i+1}</div>
-      <div class="n">${escapeHtml(it.type)} · ${escapeHtml(it.brand)} ${escapeHtml(it.reference)} (${escapeHtml(it.os)})</div>
+      <div>
+        <span class="type-badge ${typeBadgeClass(it.type)}">${it.type}</span>
+        <span class="n" style="margin-left:6px;">${escapeHtml(it.brand)} ${escapeHtml(it.reference)} (${escapeHtml(it.os)})</span>
+      </div>
       <div class="s">${fmt(it.sold||0)} vendus</div>
     </div>
   `).join('');
 }
 
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderHistory(){
+  if(!history.length) return `<div class="empty">Aucun mouvement enregistré pour l'instant.</div>`;
+  const sorted = [...history].sort((a,b)=> new Date(b.ts) - new Date(a.ts)).slice(0,100);
+  const labelFor = a => ({inc:'Ajout manuel', dec:'Retrait manuel', sell:'Vente'})[a] || a;
+  return sorted.map(h=>{
+    const deltaClass = h.delta > 0 ? 'pos' : h.delta < 0 ? 'neg' : '';
+    const deltaText = h.delta > 0 ? `+${h.delta}` : `${h.delta}`;
+    const d = new Date(h.ts);
+    const dateStr = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    return `
+    <div class="hist-row">
+      <div class="top">
+        <span>${escapeHtml(h.itemName)}</span>
+        <span class="hist-delta ${deltaClass}">${deltaText}</span>
+      </div>
+      <div class="meta">${labelFor(h.action)} · ${dateStr} · ${h.qtyBefore} → ${h.qtyAfter}</div>
+    </div>`;
+  }).join('');
+}
 
 function wireTabEvents(){
   const sb = document.getElementById('searchBox');
   if(sb){ sb.oninput = e=>{ search = e.target.value; const pos = e.target.selectionStart; render(); const nsb=document.getElementById('searchBox'); nsb.focus(); nsb.setSelectionRange(pos,pos); }; }
+  const rsb = document.getElementById('reqSearchBox');
+  if(rsb){ rsb.oninput = e=>{ reqSearch = e.target.value; const pos = e.target.selectionStart; render(); const nrsb=document.getElementById('reqSearchBox'); if(nrsb){ nrsb.focus(); nrsb.setSelectionRange(pos,pos); } }; }
+  const ssel = document.getElementById('sortSel');
+  if(ssel){ ssel.onchange = e=>{ sortMode = e.target.value; render(); }; }
+  const gt = document.getElementById('groupToggle');
+  if(gt){ gt.onclick = ()=>{ groupByRef = !groupByRef; render(); }; }
+  const co = document.getElementById('critOnlyOff');
+  if(co){ co.onclick = ()=>{ criticalOnly = false; render(); }; }
+  const cdb = document.getElementById('clearDoneBtn');
+  if(cdb){ cdb.onclick = ()=>clearDoneRequests(); }
 
   document.querySelectorAll('[data-act="inc"]').forEach(b=>b.onclick=()=>adjustQty(b.dataset.id, 1));
   document.querySelectorAll('[data-act="dec"]').forEach(b=>b.onclick=()=>adjustQty(b.dataset.id, -1));
-  document.querySelectorAll('[data-act="sell"]').forEach(b=>b.onclick=()=>sellOne(b.dataset.id));
+  document.querySelectorAll('[data-act="sell"]').forEach(b=>b.onclick=()=>openSellSheet(b.dataset.id));
   document.querySelectorAll('[data-act="edit"]').forEach(b=>b.onclick=()=>openItemSheet(b.dataset.id));
   document.querySelectorAll('[data-act="toggle-req"]').forEach(b=>b.onclick=()=>toggleRequest(b.dataset.id));
   document.querySelectorAll('[data-osf]').forEach(b=>b.onclick=()=>{ osFilter=b.dataset.osf; render(); });
@@ -435,6 +746,7 @@ function wireTabEvents(){
     await addManualRequest(search.trim(), 1);
     search = '';
     render();
+    showToast(`"${qAdd.dataset.name||''}" ajouté à la liste d'achats.`);
   };
 }
 
@@ -446,19 +758,50 @@ function openSheet(html){
 function closeSheet(){ document.getElementById('sheetBg').classList.remove('open'); }
 document.getElementById('sheetBg').onclick = e=>{ if(e.target.id==='sheetBg') closeSheet(); };
 
+function openMenuSheet(){
+  openSheet(`
+    <h3>Menu</h3>
+    <div class="menu-item" id="miImport" style="cursor:pointer;">📥 Import en lot<div class="desc">Coller une liste de références et quantités</div></div>
+    <div class="menu-item" id="miBackup" style="cursor:pointer;">💾 Sauvegarde &amp; restauration<div class="desc">Export JSON / CSV, restaurer une sauvegarde</div></div>
+    <div class="menu-item" id="miHistory" style="cursor:pointer;">🕒 Historique des mouvements<div class="desc">${history.length || '...'} entrées enregistrées</div></div>
+  `);
+  document.getElementById('miImport').onclick = ()=>openImportSheet();
+  document.getElementById('miBackup').onclick = ()=>openBackupSheet();
+  document.getElementById('miHistory').onclick = ()=>{ tab='hist'; loadHistory().then(()=>{ closeSheet(); render(); }); };
+}
+
+function openSellSheet(id){
+  const it = items.find(i=>i.id===id); if(!it) return;
+  openSheet(`
+    <h3>Vendre — ${escapeHtml(displayName(it))}</h3>
+    <div class="field"><label>Quantité vendue (stock actuel : ${fmt(it.qty)})</label><input id="sellQty" type="number" min="1" value="1"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="btnCancel">Annuler</button>
+      <button class="btn btn-primary" id="btnConfirmSell">Confirmer</button>
+    </div>
+  `);
+  document.getElementById('btnCancel').onclick = closeSheet;
+  document.getElementById('sellQty').focus();
+  document.getElementById('btnConfirmSell').onclick = async ()=>{
+    const q = parseInt(document.getElementById('sellQty').value) || 1;
+    closeSheet();
+    await sellQty(id, q);
+  };
+}
+
 function openItemSheet(editId){
   const it = editId ? items.find(i=>i.id===editId) : null;
   openSheet(`
     <h3>${it ? 'Modifier l’article' : 'Nouvel article'}</h3>
     <div class="field-row">
       <div class="field"><label>Type</label>
-        <select id="fType" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;">
+        <select id="fType">
           <option value="ANTICASS" ${it&&it.type==='ANTICASS'?'selected':''}>ANTICASS</option>
           <option value="ANTICHOC" ${it&&it.type==='ANTICHOC'?'selected':''}>ANTICHOC</option>
         </select>
       </div>
       <div class="field"><label>OS</label>
-        <select id="fOs" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;">
+        <select id="fOs">
           <option value="Android" ${it&&it.os==='Android'?'selected':''}>Android</option>
           <option value="iOS" ${it&&it.os==='iOS'?'selected':''}>iOS</option>
         </select>
@@ -477,7 +820,7 @@ function openItemSheet(editId){
     </div>
   `);
   document.getElementById('btnCancel').onclick = closeSheet;
-  if(it) document.getElementById('btnDel').onclick = async ()=>{ await deleteItem(it.id); closeSheet(); };
+  if(it) document.getElementById('btnDel').onclick = async ()=>{ closeSheet(); await deleteItem(it.id); };
   document.getElementById('btnSave').onclick = async ()=>{
     const brand = document.getElementById('fBrand').value.trim();
     const reference = document.getElementById('fRef').value.trim();
@@ -491,6 +834,7 @@ function openItemSheet(editId){
     };
     await saveItemForm(data, editId);
     closeSheet();
+    showToast(it ? 'Article modifié.' : 'Article ajouté.');
   };
 }
 
@@ -499,13 +843,13 @@ function openImportSheet(){
     <h3>Import en lot</h3>
     <div class="field-row">
       <div class="field"><label>Type</label>
-        <select id="iType" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;">
+        <select id="iType">
           <option value="ANTICASS">ANTICASS</option>
           <option value="ANTICHOC">ANTICHOC</option>
         </select>
       </div>
       <div class="field"><label>OS</label>
-        <select id="iOs" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;">
+        <select id="iOs">
           <option value="iOS">iOS</option>
           <option value="Android">Android</option>
         </select>
@@ -519,7 +863,6 @@ function openImportSheet(){
 iPhone 15 Plus : 1
 iPhone 15 Pro Max : 3"></textarea>
     </div>
-    <div id="importPreview" style="font-size:12px; color:var(--muted); margin-top:4px;"></div>
     <div class="sheet-actions">
       <button class="btn btn-ghost" id="btnCancel">Annuler</button>
       <button class="btn btn-primary" id="btnImport">Importer</button>
@@ -533,29 +876,9 @@ iPhone 15 Pro Max : 3"></textarea>
     const critical = parseInt(document.getElementById('iCrit').value) || 0;
     const raw = document.getElementById('iText').value;
     const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    let created = 0, updated = 0, skipped = 0;
-    for(const line of lines){
-      const m = line.match(/^(.+?)\s*:\s*(\d+)\s*$/);
-      if(!m){ skipped++; continue; }
-      const reference = m[1].trim();
-      const qty = parseInt(m[2]);
-      const existing = items.find(i=>i.type===type && i.os===os && i.brand.toLowerCase()===brand.toLowerCase() && i.reference.toLowerCase()===reference.toLowerCase());
-      if(existing){
-        existing.qty = qty;
-        if(!existing.critical) existing.critical = critical;
-        await put('items', existing);
-        if(existing.qty <= 2) await ensureRequest(existing);
-        updated++;
-      } else {
-        const newIt = {id:uid(), type, os, brand, reference, qty, critical, sold:0};
-        await put('items', newIt);
-        if(newIt.qty <= 2) await ensureRequest(newIt);
-        created++;
-      }
-    }
-    await loadAll();
+    const {created, updated, skipped} = await bulkImport(type, os, brand, critical, lines);
     closeSheet();
-    alert(`${created} article(s) créé(s), ${updated} mis à jour${skipped?`, ${skipped} ligne(s) ignorée(s)`:''}.`);
+    showToast(`${created} créé(s), ${updated} mis à jour${skipped?`, ${skipped} ignorée(s)`:''}.`);
   };
 }
 
@@ -566,12 +889,13 @@ function openBackupSheet(){
     <h3>Sauvegarde</h3>
     <div class="field">
       <label>Exporter</label>
-      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">Télécharge un fichier JSON avec tous tes articles et demandes. Garde-le sur Drive, email, etc.</div>
-      <button class="btn btn-primary" id="btnExport" style="width:100%;">Télécharger la sauvegarde (${items.length} articles)</button>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">Télécharge un fichier avec tous tes articles et demandes. Garde-le sur Drive, email, etc.</div>
+      <button class="btn btn-primary" id="btnExportJson" style="width:100%; margin-bottom:8px;">Télécharger JSON (${items.length} articles)</button>
+      <button class="btn btn-ghost" id="btnExportCsv" style="width:100%;">Télécharger CSV (tableur)</button>
     </div>
     <div class="field" style="margin-top:20px;">
       <label>Restaurer</label>
-      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">Recharge un fichier de sauvegarde. Remplace les données actuelles.</div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">Recharge un fichier de sauvegarde JSON. Remplace les données actuelles.</div>
       <input type="file" id="fileRestore" accept="application/json" style="width:100%; color:var(--muted); font-size:13px;">
     </div>
     <div class="sheet-actions">
@@ -579,14 +903,21 @@ function openBackupSheet(){
     </div>
   `);
   document.getElementById('btnCancel').onclick = closeSheet;
-  document.getElementById('btnExport').onclick = ()=>{
+  document.getElementById('btnExportJson').onclick = async ()=>{
     const payload = { exportedAt: now.toISOString(), items, requests };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `stockly-backup-${dateStr}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    downloadBlob(JSON.stringify(payload, null, 2), `stockly-backup-${dateStr}.json`, 'application/json');
+    await resetChangeCounter();
+    closeSheet();
+    showToast('Sauvegarde JSON téléchargée.');
+  };
+  document.getElementById('btnExportCsv').onclick = async ()=>{
+    const header = 'Type,OS,Marque,Reference,Quantite,SeuilCritique,Vendus';
+    const rows = items.map(it=>[it.type,it.os,it.brand,it.reference,it.qty,it.critical,it.sold||0]
+      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+    downloadBlob([header, ...rows].join('\n'), `stockly-inventaire-${dateStr}.csv`, 'text/csv');
+    await resetChangeCounter();
+    closeSheet();
+    showToast('Export CSV téléchargé.');
   };
   document.getElementById('fileRestore').onchange = async (e)=>{
     const file = e.target.files[0]; if(!file) return;
@@ -599,13 +930,22 @@ function openBackupSheet(){
       for(const r of requests) await del('requests', r.id);
       for(const it of data.items) await put('items', it);
       for(const r of (data.requests||[])) await put('requests', r);
+      await resetChangeCounter();
       await loadAll();
       closeSheet();
-      alert('Sauvegarde restaurée.');
+      showToast('Sauvegarde restaurée.');
     }catch(err){
-      alert('Fichier invalide.');
+      showToast('Fichier invalide.');
     }
   };
+}
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function openRequestSheet(){
@@ -625,6 +965,7 @@ function openRequestSheet(){
     if(!name) return;
     await addManualRequest(name, qty);
     closeSheet();
+    showToast(`"${name}" ajouté à la liste d'achats.`);
   };
 }
 
