@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#12181f">
 <title>Stockly — Inventaire</title>
 <link rel="manifest" href="manifest.json">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --bg: #12181f;
@@ -78,10 +79,12 @@
   .tabs{
     display:flex; background:var(--panel); border:1px solid var(--line); border-radius:10px;
     padding:3px; margin-bottom:12px; position:sticky; top:8px; z-index:10;
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
   }
+  .tabs::-webkit-scrollbar{display:none;}
   .tab{
-    flex:1; text-align:center; padding:9px 4px; border-radius:8px; font-size:13px;
-    color:var(--muted); font-weight:600; cursor:pointer; user-select:none;
+    flex:0 0 auto; min-width:74px; text-align:center; padding:9px 10px; border-radius:8px; font-size:12px;
+    color:var(--muted); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap;
     transition: background .15s, color .15s;
   }
   .tab.active{background:var(--panel2); color:var(--text);}
@@ -226,6 +229,23 @@
   .hist-delta.pos{color:var(--green);}
   .hist-delta.neg{color:var(--red);}
 
+  .kpi-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;}
+  .kpi{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px;
+  }
+  .kpi .n{font-family:var(--mono); font-size:20px; font-weight:700;}
+  .kpi .l{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:4px;}
+
+  .chart-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:16px 14px 12px; margin-bottom:14px;
+  }
+  .chart-card h4{margin:0 0 12px; font-size:13px; font-weight:700; color:var(--text);}
+  .chart-card .chart-wrap{position:relative; height:220px;}
+  .chart-card .chart-wrap.small{height:180px;}
+  .chart-row{display:flex; gap:10px;}
+  .chart-row .chart-card{flex:1; min-width:0;}
+
   #toastHost{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
     z-index:50; display:flex; flex-direction:column; gap:8px; width:calc(100% - 32px); max-width:520px;
@@ -301,6 +321,7 @@ let changesSinceBackup = 0;
 async function loadAll(){
   items = await getAll('items');
   requests = await getAll('requests');
+  history = await getAll('history');
   const meta = await getOne('meta', 'changesSinceBackup');
   changesSinceBackup = meta ? meta.value : 0;
   render();
@@ -518,6 +539,7 @@ function render(){
     <div class="tabs">
       <div class="tab ${tab==='inv'?'active':''}" data-tab="inv">Inventaire</div>
       <div class="tab ${tab==='req'?'active':''}" data-tab="req">Achats${openReq?`<span class="badge">${openReq}</span>`:''}</div>
+      <div class="tab ${tab==='dash'?'active':''}" data-tab="dash">Dashboard</div>
       <div class="tab ${tab==='stats'?'active':''}" data-tab="stats">Top ventes</div>
       <div class="tab ${tab==='hist'?'active':''}" data-tab="hist">Historique</div>
     </div>
@@ -537,10 +559,12 @@ function render(){
   const content = document.getElementById('tabContent');
   if(tab==='inv') content.innerHTML = renderInventory();
   else if(tab==='req') content.innerHTML = renderRequests();
+  else if(tab==='dash') content.innerHTML = renderDashboard();
   else if(tab==='stats') content.innerHTML = renderStats();
   else content.innerHTML = renderHistory();
 
   wireTabEvents();
+  if(tab==='dash') initDashboardCharts();
 
   if(tab==='inv'){
     app.insertAdjacentHTML('beforeend', `<button class="fab" id="fabAdd">+</button>`);
@@ -684,6 +708,177 @@ function renderRequests(){
   return toolbar + `
     ${open.length ? `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:4px 0 8px;">À acheter (${open.length})</div>${open.map(row).join('')}` : `<div class="empty">Rien à acheter pour le moment.</div>`}
     ${done.length ? `<div style="display:flex; align-items:center; margin:16px 0 8px;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Achetés (${done.length})</div><button id="clearDoneBtn" style="margin-left:auto; background:none; border:none; color:var(--red); font-size:11px; font-weight:700;">Vider</button></div>${done.map(row).join('')}` : ''}
+  `;
+}
+
+// ---------- Dashboard data ----------
+function computeStockByType(){
+  const out = {ANTICASS:0, ANTICHOC:0};
+  for(const it of items) out[it.type] = (out[it.type]||0) + it.qty;
+  return out;
+}
+function computeStockByOS(){
+  const out = {iOS:0, Android:0};
+  for(const it of items) out[it.os] = (out[it.os]||0) + it.qty;
+  return out;
+}
+function computeLowStock(limit){
+  return [...items].sort((a,b)=>a.qty-b.qty).slice(0, limit||8);
+}
+function computeTopSellers(limit){
+  return [...items].filter(i=>(i.sold||0)>0).sort((a,b)=>(b.sold||0)-(a.sold||0)).slice(0, limit||8);
+}
+function computeSalesOverTime(days){
+  days = days || 14;
+  const buckets = {};
+  const labels = [];
+  const now = new Date();
+  for(let i=days-1;i>=0;i--){
+    const d = new Date(now); d.setDate(now.getDate()-i);
+    const key = d.toISOString().slice(0,10);
+    buckets[key] = 0;
+    labels.push(key);
+  }
+  for(const h of history){
+    if(h.action !== 'sell') continue;
+    const key = h.ts.slice(0,10);
+    if(key in buckets) buckets[key] += Math.abs(h.delta||0);
+  }
+  return { labels, values: labels.map(l=>buckets[l]) };
+}
+function computeKpis(){
+  const totalUnits = items.reduce((s,i)=>s+i.qty, 0);
+  const totalSold = items.reduce((s,i)=>s+(i.sold||0), 0);
+  const critCount = items.filter(i=>i.qty<=i.critical).length;
+  const refCount = items.length;
+  return { totalUnits, totalSold, critCount, refCount };
+}
+
+let chartInstances = {};
+function destroyCharts(){
+  Object.values(chartInstances).forEach(c=>{ try{ c.destroy(); }catch(e){} });
+  chartInstances = {};
+}
+function initDashboardCharts(){
+  if(typeof Chart === 'undefined') return;
+  destroyCharts();
+  const byType = computeStockByType();
+  const byOs = computeStockByOS();
+  const lowStock = computeLowStock(8);
+  const topSellers = computeTopSellers(8);
+  const salesTrend = computeSalesOverTime(14);
+  const gridColor = 'rgba(255,255,255,.06)';
+  const fontColor = '#8a97a6';
+  Chart.defaults.color = fontColor;
+  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif";
+
+  const typeEl = document.getElementById('chartType');
+  if(typeEl) chartInstances.type = new Chart(typeEl, {
+    type:'doughnut',
+    data:{ labels:['ANTICASS','ANTICHOC'], datasets:[{ data:[byType.ANTICASS, byType.ANTICHOC], backgroundColor:['#4f9eea','#b586f0'], borderWidth:0 }] },
+    options:{ maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, padding:14, font:{size:11}} } } }
+  });
+
+  const osEl = document.getElementById('chartOs');
+  if(osEl) chartInstances.os = new Chart(osEl, {
+    type:'doughnut',
+    data:{ labels:['iOS','Android'], datasets:[{ data:[byOs.iOS, byOs.Android], backgroundColor:['#e8edf3','#3ecf8e'], borderWidth:0 }] },
+    options:{ maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, padding:14, font:{size:11}} } } }
+  });
+
+  const lowEl = document.getElementById('chartLowStock');
+  if(lowEl) chartInstances.low = new Chart(lowEl, {
+    type:'bar',
+    data:{
+      labels: lowStock.map(it=>`${it.brand} ${it.reference}`),
+      datasets:[{
+        data: lowStock.map(it=>it.qty),
+        backgroundColor: lowStock.map(it=> it.qty<=it.critical ? '#e5484d' : it.qty<=it.critical*1.5 ? '#f0a828' : '#3ecf8e'),
+        borderRadius:4, barThickness:14,
+      }]
+    },
+    options:{
+      indexAxis:'y', maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridColor}, ticks:{font:{size:10}} },
+        y:{ grid:{display:false}, ticks:{font:{size:10}} }
+      }
+    }
+  });
+
+  const topEl = document.getElementById('chartTopSellers');
+  if(topEl) chartInstances.top = new Chart(topEl, {
+    type:'bar',
+    data:{
+      labels: topSellers.map(it=>`${it.brand} ${it.reference}`),
+      datasets:[{ data: topSellers.map(it=>it.sold||0), backgroundColor:'#f0a828', borderRadius:4, barThickness:14 }]
+    },
+    options:{
+      indexAxis:'y', maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridColor}, ticks:{font:{size:10}} },
+        y:{ grid:{display:false}, ticks:{font:{size:10}} }
+      }
+    }
+  });
+
+  const trendEl = document.getElementById('chartTrend');
+  if(trendEl) chartInstances.trend = new Chart(trendEl, {
+    type:'line',
+    data:{
+      labels: salesTrend.labels.map(l=>l.slice(5).replace('-','/')),
+      datasets:[{ data: salesTrend.values, borderColor:'#f0a828', backgroundColor:'rgba(240,168,40,.12)', fill:true, tension:0.3, pointRadius:2 }]
+    },
+    options:{
+      maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:7} },
+        y:{ grid:{color:gridColor}, ticks:{font:{size:10}, precision:0} }
+      }
+    }
+  });
+}
+
+function renderDashboard(){
+  if(!items.length) return `<div class="empty">Ajoute des articles pour voir ton dashboard.</div>`;
+  const k = computeKpis();
+  const hasSales = items.some(i=>(i.sold||0)>0);
+  return `
+    <div class="kpi-grid">
+      <div class="kpi"><div class="n">${fmt(k.totalUnits)}</div><div class="l">Unités en stock</div></div>
+      <div class="kpi"><div class="n">${fmt(k.totalSold)}</div><div class="l">Total vendu</div></div>
+      <div class="kpi"><div class="n">${fmt(k.refCount)}</div><div class="l">Références</div></div>
+      <div class="kpi"><div class="n" style="color:${k.critCount?'var(--red)':'var(--text)'}">${fmt(k.critCount)}</div><div class="l">En stock critique</div></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <h4>Répartition par type</h4>
+        <div class="chart-wrap small"><canvas id="chartType"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Répartition par OS</h4>
+        <div class="chart-wrap small"><canvas id="chartOs"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h4>Stock le plus bas (top 8)</h4>
+      <div class="chart-wrap"><canvas id="chartLowStock"></canvas></div>
+    </div>
+
+    ${hasSales ? `
+    <div class="chart-card">
+      <h4>Meilleures ventes (top 8)</h4>
+      <div class="chart-wrap"><canvas id="chartTopSellers"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>Ventes — 14 derniers jours</h4>
+      <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+    </div>` : `<div class="empty">Les graphiques de ventes apparaîtront dès que tu auras enregistré des ventes.</div>`}
   `;
 }
 
