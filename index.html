@@ -236,7 +236,7 @@ async function adjustQty(id, delta){
   const it = items.find(i=>i.id===id); if(!it) return;
   it.qty = Math.max(0, it.qty + delta);
   await put('items', it);
-  if(it.qty === 0) await ensureRequest(it);
+  if(it.qty <= 2) await ensureRequest(it);
   await loadAll();
 }
 async function sellOne(id){
@@ -244,7 +244,7 @@ async function sellOne(id){
   if(it.qty>0) it.qty -= 1;
   it.sold = (it.sold||0) + 1;
   await put('items', it);
-  if(it.qty === 0) await ensureRequest(it);
+  if(it.qty <= 2) await ensureRequest(it);
   await loadAll();
 }
 function displayName(it){ return `${it.type} ${it.brand} ${it.reference}`; }
@@ -369,6 +369,13 @@ function renderInventory(){
     </div>`;
   }).join('');
 
+  const noResultsBlock = (!list.length && search.trim())
+    ? `<div class="empty">
+         Aucun article ne correspond à "${escapeHtml(search)}".<br><br>
+         <button class="btn btn-primary" id="btnQuickAddReq" style="padding:10px 18px;">Ajouter "${escapeHtml(search)}" à la liste d'achats</button>
+       </div>`
+    : (!list.length ? `<div class="empty">Aucun article. Touchez + pour en ajouter un.</div>` : rows);
+
   return `
     <input class="search" id="searchBox" placeholder="Rechercher (marque, référence...)" value="${escapeHtml(search)}">
     <div class="tabs" style="margin-bottom:12px;">
@@ -376,7 +383,7 @@ function renderInventory(){
       <div class="tab ${osFilter==='Android'?'active':''}" data-osf="Android">Android</div>
       <div class="tab ${osFilter==='iOS'?'active':''}" data-osf="iOS">iOS</div>
     </div>
-    ${list.length ? rows : `<div class="empty">Aucun article. Touchez + pour en ajouter un.</div>`}
+    ${noResultsBlock}
   `;
 }
 
@@ -423,6 +430,12 @@ function wireTabEvents(){
   document.querySelectorAll('[data-act="edit"]').forEach(b=>b.onclick=()=>openItemSheet(b.dataset.id));
   document.querySelectorAll('[data-act="toggle-req"]').forEach(b=>b.onclick=()=>toggleRequest(b.dataset.id));
   document.querySelectorAll('[data-osf]').forEach(b=>b.onclick=()=>{ osFilter=b.dataset.osf; render(); });
+  const qAdd = document.getElementById('btnQuickAddReq');
+  if(qAdd) qAdd.onclick = async ()=>{
+    await addManualRequest(search.trim(), 1);
+    search = '';
+    render();
+  };
 }
 
 // ---------- Sheets (modals) ----------
@@ -531,9 +544,12 @@ iPhone 15 Pro Max : 3"></textarea>
         existing.qty = qty;
         if(!existing.critical) existing.critical = critical;
         await put('items', existing);
+        if(existing.qty <= 2) await ensureRequest(existing);
         updated++;
       } else {
-        await put('items', {id:uid(), type, os, brand, reference, qty, critical, sold:0});
+        const newIt = {id:uid(), type, os, brand, reference, qty, critical, sold:0};
+        await put('items', newIt);
+        if(newIt.qty <= 2) await ensureRequest(newIt);
         created++;
       }
     }
