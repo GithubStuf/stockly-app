@@ -370,7 +370,7 @@ async function adjustQty(id, delta){
   it.qty = Math.max(0, it.qty + delta);
   await put('items', it);
   await logHistory(delta>0?'inc':'dec', it, it.qty-before, before, it.qty);
-  if(it.qty <= 2) await ensureRequest(it);
+  if(it.qty <= 1) await ensureRequest(it);
   await bumpChangeCounter();
   lastUndo = { kind:'qty', itemId: id, prevQty: before, prevSold: it.sold };
   await loadAll();
@@ -385,7 +385,7 @@ async function sellQty(id, qty){
   it.sold = beforeSold + actualSold;
   await put('items', it);
   await logHistory('sell', it, -(beforeQty-it.qty), beforeQty, it.qty);
-  if(it.qty <= 2) await ensureRequest(it);
+  if(it.qty <= 1) await ensureRequest(it);
   await bumpChangeCounter();
   lastUndo = { kind:'qty', itemId: id, prevQty: beforeQty, prevSold: beforeSold };
   await loadAll();
@@ -466,12 +466,12 @@ async function bulkImport(type, os, brand, critical, lines){
       existing.qty = qty;
       if(!existing.critical) existing.critical = critical;
       await put('items', existing);
-      if(existing.qty <= 2) await ensureRequest(existing);
+      if(existing.qty <= 1) await ensureRequest(existing);
       updated++;
     } else {
       const newIt = {id:uid(), type, os, brand, reference, qty, critical, sold:0};
       await put('items', newIt);
-      if(newIt.qty <= 2) await ensureRequest(newIt);
+      if(newIt.qty <= 1) await ensureRequest(newIt);
       created++;
     }
   }
@@ -672,12 +672,13 @@ function renderRequests(){
       <div class="req-qty">×${fmt(r.qty)}</div>
     </div>`;
 
-  const toolbar = requests.length > 5 ? `
+  const toolbar = requests.length > 0 ? `
     <div class="toolbar">
-      <input class="search" id="reqSearchBox" placeholder="Rechercher dans les achats..." value="${escapeHtml(reqSearch)}">
+      ${requests.length > 5 ? `<input class="search" id="reqSearchBox" placeholder="Rechercher dans les achats..." value="${escapeHtml(reqSearch)}">` : `<div style="flex:1;"></div>`}
+      <button class="qbtn" id="exportReqBtn" style="flex:0 0 auto; padding:0 14px; color:var(--amber);">Exporter</button>
     </div>` : '';
 
-  if(!requests.length) return toolbar + `<div class="empty">Aucune demande de réapprovisionnement.<br>Les articles à 2 ou moins sont ajoutés automatiquement.</div>`;
+  if(!requests.length) return toolbar + `<div class="empty">Aucune demande de réapprovisionnement.<br>Les articles à 1 ou moins sont ajoutés automatiquement.</div>`;
   if(!list.length) return toolbar + `<div class="empty">Aucun résultat pour "${escapeHtml(reqSearch)}".</div>`;
 
   return toolbar + `
@@ -734,6 +735,8 @@ function wireTabEvents(){
   if(co){ co.onclick = ()=>{ criticalOnly = false; render(); }; }
   const cdb = document.getElementById('clearDoneBtn');
   if(cdb){ cdb.onclick = ()=>clearDoneRequests(); }
+  const erb = document.getElementById('exportReqBtn');
+  if(erb){ erb.onclick = ()=>exportRequests(); }
 
   document.querySelectorAll('[data-act="inc"]').forEach(b=>b.onclick=()=>adjustQty(b.dataset.id, 1));
   document.querySelectorAll('[data-act="dec"]').forEach(b=>b.onclick=()=>adjustQty(b.dataset.id, -1));
@@ -946,6 +949,15 @@ function downloadBlob(content, filename, mime){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+}
+function exportRequests(){
+  const dateStr = new Date().toISOString().slice(0,10);
+  const open = requests.filter(r=>!r.done);
+  if(!open.length){ showToast('Rien à exporter, la liste d\'achats est vide.'); return; }
+  const header = 'Article,Quantite';
+  const rows = open.map(r=>`"${String(r.name).replace(/"/g,'""')}","${r.qty}"`);
+  downloadBlob([header, ...rows].join('\n'), `stockly-liste-achats-${dateStr}.csv`, 'text/csv');
+  showToast(`Liste d'achats exportée (${open.length} article(s)).`);
 }
 
 function openRequestSheet(){
