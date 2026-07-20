@@ -294,7 +294,10 @@ function render(){
         <div class="brand">Stock<span>ly</span></div>
         <div class="sub">Gestion d'inventaire</div>
       </div>
-      <button id="importBtn" style="background:var(--panel); border:1px solid var(--line); color:var(--amber); border-radius:9px; padding:8px 12px; font-size:12px; font-weight:600;">Importer</button>
+      <div style="display:flex; align-items:center;">
+        <button id="importBtn" style="background:var(--panel); border:1px solid var(--line); color:var(--amber); border-radius:9px; padding:8px 12px; font-size:12px; font-weight:600;">Importer</button>
+        <button id="backupBtn" style="background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:9px; padding:8px 12px; font-size:12px; font-weight:600; margin-left:6px;">⇅</button>
+      </div>
     </header>
 
     <div class="stat-row">
@@ -313,6 +316,7 @@ function render(){
   `;
   document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tab=t.dataset.tab; render(); });
   document.getElementById('importBtn').onclick = ()=>openImportSheet();
+  document.getElementById('backupBtn').onclick = ()=>openBackupSheet();
 
   const content = document.getElementById('tabContent');
   if(tab==='inv') content.innerHTML = renderInventory();
@@ -536,6 +540,55 @@ iPhone 15 Pro Max : 3"></textarea>
     await loadAll();
     closeSheet();
     alert(`${created} article(s) créé(s), ${updated} mis à jour${skipped?`, ${skipped} ligne(s) ignorée(s)`:''}.`);
+  };
+}
+
+function openBackupSheet(){
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0,10);
+  openSheet(`
+    <h3>Sauvegarde</h3>
+    <div class="field">
+      <label>Exporter</label>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">Télécharge un fichier JSON avec tous tes articles et demandes. Garde-le sur Drive, email, etc.</div>
+      <button class="btn btn-primary" id="btnExport" style="width:100%;">Télécharger la sauvegarde (${items.length} articles)</button>
+    </div>
+    <div class="field" style="margin-top:20px;">
+      <label>Restaurer</label>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">Recharge un fichier de sauvegarde. Remplace les données actuelles.</div>
+      <input type="file" id="fileRestore" accept="application/json" style="width:100%; color:var(--muted); font-size:13px;">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="btnCancel">Fermer</button>
+    </div>
+  `);
+  document.getElementById('btnCancel').onclick = closeSheet;
+  document.getElementById('btnExport').onclick = ()=>{
+    const payload = { exportedAt: now.toISOString(), items, requests };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `stockly-backup-${dateStr}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+  document.getElementById('fileRestore').onchange = async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!Array.isArray(data.items)) throw new Error('format invalide');
+      if(!confirm(`Remplacer les données actuelles par cette sauvegarde (${data.items.length} articles) ?`)) return;
+      for(const it of items) await del('items', it.id);
+      for(const r of requests) await del('requests', r.id);
+      for(const it of data.items) await put('items', it);
+      for(const r of (data.requests||[])) await put('requests', r);
+      await loadAll();
+      closeSheet();
+      alert('Sauvegarde restaurée.');
+    }catch(err){
+      alert('Fichier invalide.');
+    }
   };
 }
 
